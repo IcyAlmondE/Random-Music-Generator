@@ -1,5 +1,8 @@
 from flask import Flask, request, render_template, send_file
 import random as r
+from music21 import *
+import io
+
 app = Flask(__name__)
 
 @app.route("/")
@@ -44,19 +47,22 @@ notes = {"A":['A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'G#4',
                'Ab4', 'Bb4', 'C5', 'Db5', 'Eb5', 'F5', 'G5', 
                'Ab5', 'Bb5', 'C6']}
 steps = [-3, -2, -1, 0, 1, 2, 3]
-duration = [0.5, 0.5, 1, 1, 1, 1, 2, 2, 4] # weighted
+durations = {'3/4':[0.5, 0.5, 1, 1, 1, 2, 3], 
+             '4/4':[0.5, 0.5, 1, 1, 1, 1, 2, 2], 
+             '6/8':[0.5, 0.5, 0.5, 1, 1, 1, 1.5]} # weighted
 time_signature = {'3/4':3, '4/4':4, '6/8':3}
+keynum = {'A':3, 'Bb':-2, 'B':5, 'C':0, 'Db':-5, 'D':2, 'Eb':-3, 'E':4, 'F':-1, 'Gb':-6, 'G':1, 'Ab':-4}
 
 def randKey():
-    key = r.choice(["A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"])
-    return key
+    keys = r.choice(["A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"])
+    return keys
 
 def randTimeSig():
     ts = r.choice(['3/4', '4/4', '6/8'])
     return ts
 
-def randStart(key):
-    global notes, duration, perbar, measure
+def randStart(key, ts):
+    global notes, durations, perbar, measure
     start = {"A":['A3', 'C#4', 'E4', 'A4', 'C#5', 'E5', 'A5', 'C#6'], 
              "Bb":['Bb3', 'D4', 'F4', 'Bb4', 'D5', 'F5', 'Bb5', 'D6'], 
              "B":['B3', 'D#4', 'F#4', 'B4', 'D#5', 'F#5', 'B5', 'D#6'], 
@@ -70,14 +76,14 @@ def randStart(key):
              "G":['G3', 'B3', 'D4', 'G4', 'B4', 'D5', 'G5', 'B5', 'D6'], 
              "Ab":['Ab3', 'C4', 'Eb4', 'Ab4', 'C5', 'Eb5', 'Ab5', 'C6']}
     start_note = r.choice(start[key])
-    dur = r.choice(duration)
+    dur = r.choice(durations[ts])
     perbar -= dur
     if perbar==0:
         measure += 1
-        perbar = bar
+        perbar = bars
     return start_note, notes[key].index(start_note), dur
 
-def randNote(key, pos):
+def randNote(key, ts, pos):
     global notes, steps, perbar, measure, l_dur
     interval = r.choice(steps)
     pos += interval
@@ -88,45 +94,63 @@ def randNote(key, pos):
     # print(pos)
     
     if l_dur[-1]!=0.5:
-        dur = r.choice(duration)
+        dur = r.choice(durations[ts])
     else:
-        dur = r.choice(duration[:-1])
+        dur = r.choice(durations[ts][:-2])
 
     if dur-perbar==0:
         measure += 1
-        perbar = bar
+        perbar = bars
     elif perbar-dur<0:
         dur = perbar
-        perbar = bar
+        perbar = bars
         measure+=1
     else:
         perbar -= dur
     return notes[key][pos], pos, dur
-    
+
+def makeSheet(l_notes, l_dur, ts, keys):
+    global keynum
+    strm = stream.Stream()
+    timesig = meter.TimeSignature(ts)
+    keysig = key.KeySignature(keynum[keys])
+    strm.insert(0, timesig)
+    strm.insert(0, keysig)
+
+    for i in range(len(l_notes)):
+        strm.append(note.Note(l_notes[i], quarterLength=l_dur[i]))
+
+    return strm
+
+m = int(input("Measure: "))
+
 s = input()
 if s:
-    key = randKey()
-    print(key, 'major')
+    keys = randKey()
+    print(keys, 'major')
 
 s = input()
 if s:
     ts = randTimeSig()
     print(ts)
-    bar = time_signature[ts]
+    bars = time_signature[ts]
 
 s = input()
 if s:
     measure = 1
-    perbar = bar
+    perbar = bars
     l_notes = []
     l_dur = []
-    st, pos, dur = randStart(key)
+    st, pos, dur = randStart(keys, ts)
     l_notes.append(st)
     l_dur.append(dur)
-    while measure<=8:
-        n, pos, dur = randNote(key, pos)
+    while measure<=m:
+        n, pos, dur = randNote(keys, ts, pos)
         l_notes.append(n)
         l_dur.append(dur)
     print(l_notes)
     print(l_dur)
     print(sum(l_dur))
+
+strm = makeSheet(l_notes, l_dur, ts, keys)
+strm.show()
