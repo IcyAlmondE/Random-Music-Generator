@@ -1,13 +1,9 @@
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, render_template, send_file, jsonify
 import random as r
 from music21 import *
 import io
 
 app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Hello, world"
 
 # randoming part
 notes = {"A":['A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'G#4', 
@@ -62,7 +58,7 @@ def randTimeSig():
     return ts
 
 def randStart(key, ts):
-    global notes, durations, perbar, measure
+    global notes, durations, perbar, measure, bars
     start = {"A":['A3', 'C#4', 'E4', 'A4', 'C#5', 'E5', 'A5', 'C#6'], 
              "Bb":['Bb3', 'D4', 'F4', 'Bb4', 'D5', 'F5', 'Bb5', 'D6'], 
              "B":['B3', 'D#4', 'F#4', 'B4', 'D#5', 'F#5', 'B5', 'D#6'], 
@@ -84,7 +80,7 @@ def randStart(key, ts):
     return start_note, notes[key].index(start_note), dur
 
 def randNote(key, ts, pos):
-    global notes, steps, perbar, measure, l_dur
+    global notes, steps, perbar, measure, l_dur, bars
     interval = r.choice(steps)
     pos += interval
     if pos>len(notes[key])-1:
@@ -120,23 +116,69 @@ def makeSheet(l_notes, l_dur, ts, keys):
     for i in range(len(l_notes)):
         strm.append(note.Note(l_notes[i], quarterLength=l_dur[i]))
 
-    return strm
+    # return strm
 
-m = int(input("Measure: "))
+    png_file = io.BytesIO()
+    strm.write('musicxml.png', fp=png_file)
+    png_file.seek(0)
+    return png_file
 
-s = input()
-if s:
-    keys = randKey()
-    print(keys, 'major')
+# m = int(input("Measure: "))
 
-s = input()
-if s:
-    ts = randTimeSig()
-    print(ts)
-    bars = time_signature[ts]
+# s = input()
+# if s:
+#     keys = randKey()
+#     print(keys, 'major')
 
-s = input()
-if s:
+# s = input()
+# if s:
+#     ts = randTimeSig()
+#     print(ts)
+#     bars = time_signature[ts]
+
+# s = input()
+# if s:
+#     measure = 1
+#     perbar = bars
+#     l_notes = []
+#     l_dur = []
+#     st, pos, dur = randStart(keys, ts)
+#     l_notes.append(st)
+#     l_dur.append(dur)
+#     while measure<=m:
+#         n, pos, dur = randNote(keys, ts, pos)
+#         l_notes.append(n)
+#         l_dur.append(dur)
+#     print(l_notes)
+#     print(l_dur)
+#     print(sum(l_dur))
+
+# strm = makeSheet(l_notes, l_dur, ts, keys)
+# strm.show()
+
+# web part
+@app.route("/")
+def home():
+    return render_template('index.html')
+
+@app.route("/random-key")
+def get_random_key():
+    key_res = randKey()
+    return jsonify({"key":key_res})
+
+@app.route('/random-time', methods=['GET'])
+def get_random_time_signature():
+    time_res = randTimeSig()
+    return jsonify({"time_signature": time_res})
+
+@app.route('/generate-music', methods=['POST'])
+def generate_music():
+    data = request.json
+    num_measures = int(data.get('num_measures'))
+    keys = key.Key(data.get('key_signature'))
+    ts = data.get('time_signature')
+
+    # Generate the sheet music image
     measure = 1
     perbar = bars
     l_notes = []
@@ -144,13 +186,12 @@ if s:
     st, pos, dur = randStart(keys, ts)
     l_notes.append(st)
     l_dur.append(dur)
-    while measure<=m:
+    while measure<=num_measures:
         n, pos, dur = randNote(keys, ts, pos)
         l_notes.append(n)
         l_dur.append(dur)
-    print(l_notes)
-    print(l_dur)
-    print(sum(l_dur))
 
-strm = makeSheet(l_notes, l_dur, ts, keys)
-strm.show()
+    png_file = makeSheet(l_notes, l_dur, ts, keys)
+
+    # Send the PNG file back to the frontend
+    return send_file(png_file, mimetype='image/png')

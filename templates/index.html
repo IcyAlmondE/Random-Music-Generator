@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheet Music Generator</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+    <h1>Random Sheet Music Generator</h1>
+
+    <!-- Key Randomizer -->
+    <div id="keySection">
+        <h2>Key Randomizer</h2>
+        <button onclick="randomizeKey()">Randomize Key</button>
+        <p id="keyOutput">Press the button to randomize a key.</p>
+    </div>
+
+    <!-- Time Signature Randomizer -->
+    <div id="timeSignatureSection">
+        <h2>Time Signature Randomizer</h2>
+        <button onclick="randomizeTimeSignature()">Randomize Time Signature</button>
+        <p id="timeOutput">Press the button to randomize a time signature.</p>
+    </div>
+
+    <!-- Notes Randomizer -->
+    <div id="notesSection">
+        <h2>Notes Randomizer</h2>
+        <form id="inputForm">
+            <label for="num_measures">Number of Measures:</label>
+            <input type="number" id="num_measures" name="num_measures" placeholder="16" required>
+
+            <button type="button" onclick="generateMusic()">Generate Sheet Music</button>
+        </form>
+
+        <h3>Result:</h3>
+        <img id="sheetMusicImage" style="display:none; max-width: 100%; border: 1px solid #000;" alt="Generated Sheet Music">
+    </div>
+
+    <script src="../static/js/script.js"></script>
+</body>
+</html>
